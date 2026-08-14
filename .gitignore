@@ -1,0 +1,26 @@
+# Unreal Engine generated files
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# IDE generated files
+.idea/
+.vs/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+
+# Unused Epic sample content
+Content/StarterContent/
+
+# Local Codex metadata
+.codex/
+
+# OS files
+.DS_Store
+Thumbs.db
