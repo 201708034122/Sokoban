@@ -19,8 +19,11 @@ void ASokobanPlayerController::BeginPlay()
         UE_LOG(LogTemp, Error, TEXT("Sokoban board was not found."));
     }
 
-    SetInputMode(FInputModeGameOnly());
-    bShowMouseCursor = false;
+    FInputModeGameAndUI InputMode;
+    InputMode.SetHideCursorDuringCapture(false);
+
+    SetInputMode(InputMode);
+    bShowMouseCursor = true;
 }
 
 void ASokobanPlayerController::SetupInputComponent()

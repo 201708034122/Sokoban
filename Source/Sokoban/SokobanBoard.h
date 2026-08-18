@@ -65,6 +65,26 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Sokoban|Game")
     void ResetLevel();
+    
+    UFUNCTION(BlueprintCallable, Category = "Sokoban|Editor")
+    bool SetEditorTileAtWorldLocation(
+        FVector WorldLocation,
+        ESokobanTileType TileType);
+
+    UFUNCTION(BlueprintCallable, Category = "Sokoban|Editor")
+    bool PlaceEditorBoxAtWorldLocation(FVector WorldLocation);
+
+    UFUNCTION(BlueprintCallable, Category = "Sokoban|Editor")
+    bool PlaceEditorPlayerAtWorldLocation(FVector WorldLocation);
+
+    UFUNCTION(BlueprintCallable, Category = "Sokoban|Editor")
+    bool EraseEditorCellAtWorldLocation(FVector WorldLocation);
+
+    UFUNCTION(BlueprintCallable, Category = "Sokoban|Editor")
+    void ClearEditorLevel();
+    
+    UFUNCTION(BlueprintCallable, Category = "Sokoban|Editor")
+    bool ValidateEditorLevel(FText& OutErrorMessage) const;
 
     UFUNCTION(CallInEditor, Category = "Sokoban")
     void InitializeTestLevel();
@@ -120,6 +140,9 @@ private:
     int32 FindBoxIndex(const FIntPoint& Position) const;
     void SaveSnapshot();
     bool CheckLevelCompleted() const;
+    bool WorldToGrid(
+        const FVector& WorldLocation,
+        FIntPoint& OutGridPosition) const;
 
     TArray<FSokobanSnapshot> UndoStack;
     int32 MoveCount = 0;

@@ -255,6 +255,221 @@ void ASokobanBoard::ResetLevel()
     RebuildVisuals();
 }
 
+bool ASokobanBoard::SetEditorTileAtWorldLocation(
+    FVector WorldLocation,
+    ESokobanTileType TileType)
+{
+    FIntPoint Position;
+    if (!WorldToGrid(WorldLocation, Position))
+    {
+        return false;
+    }
+
+    const bool bWalkable =
+        TileType == ESokobanTileType::Floor ||
+        TileType == ESokobanTileType::Target;
+
+    if (!bWalkable && Position == LevelData.PlayerStart)
+    {
+        return false;
+    }
+
+    const int32 Index =
+        Position.Y * LevelData.Columns + Position.X;
+
+    LevelData.Tiles[Index] = TileType;
+
+    if (!bWalkable)
+    {
+        LevelData.BoxStarts.Remove(Position);
+    }
+
+    ResetLevel();
+    return true;
+}
+
+bool ASokobanBoard::PlaceEditorBoxAtWorldLocation(
+    FVector WorldLocation)
+{
+    FIntPoint Position;
+    if (!WorldToGrid(WorldLocation, Position) ||
+        !IsWalkable(Position) ||
+        Position == LevelData.PlayerStart ||
+        LevelData.BoxStarts.Contains(Position))
+    {
+        return false;
+    }
+
+    LevelData.BoxStarts.Add(Position);
+    ResetLevel();
+    return true;
+}
+
+bool ASokobanBoard::PlaceEditorPlayerAtWorldLocation(
+    FVector WorldLocation)
+{
+    FIntPoint Position;
+    if (!WorldToGrid(WorldLocation, Position) ||
+        !IsWalkable(Position) ||
+        LevelData.BoxStarts.Contains(Position))
+    {
+        return false;
+    }
+
+    LevelData.PlayerStart = Position;
+    ResetLevel();
+    return true;
+}
+
+bool ASokobanBoard::EraseEditorCellAtWorldLocation(
+    FVector WorldLocation)
+{
+    FIntPoint Position;
+    if (!WorldToGrid(WorldLocation, Position))
+    {
+        return false;
+    }
+
+    const int32 Index =
+        Position.Y * LevelData.Columns + Position.X;
+
+    LevelData.Tiles[Index] = ESokobanTileType::Floor;
+    LevelData.BoxStarts.Remove(Position);
+
+    ResetLevel();
+    return true;
+}
+
+void ASokobanBoard::ClearEditorLevel()
+{
+    if (LevelData.Rows <= 2 || LevelData.Columns <= 2)
+    {
+        LevelData.Rows = 7;
+        LevelData.Columns = 9;
+    }
+
+    LevelData.Tiles.Init(
+        ESokobanTileType::Floor,
+        LevelData.Rows * LevelData.Columns);
+
+    for (int32 Row = 0; Row < LevelData.Rows; ++Row)
+    {
+        for (int32 Column = 0; Column < LevelData.Columns; ++Column)
+        {
+            const bool bBoundary =
+                Row == 0 || Row == LevelData.Rows - 1 ||
+                Column == 0 || Column == LevelData.Columns - 1;
+
+            if (bBoundary)
+            {
+                LevelData.Tiles[
+                    Row * LevelData.Columns + Column] =
+                    ESokobanTileType::Wall;
+            }
+        }
+    }
+
+    LevelData.PlayerStart = FIntPoint(1, 1);
+    LevelData.BoxStarts.Empty();
+    ResetLevel();
+}
+
+bool ASokobanBoard::ValidateEditorLevel(
+    FText& OutErrorMessage) const
+{
+    const int32 ExpectedTileCount =
+        LevelData.Rows * LevelData.Columns;
+
+    if (LevelData.Rows <= 0 ||
+        LevelData.Columns <= 0 ||
+        LevelData.Tiles.Num() != ExpectedTileCount)
+    {
+        OutErrorMessage =
+            FText::FromString(TEXT("棋盘数据无效"));
+        return false;
+    }
+
+    int32 TargetCount = 0;
+    for (const ESokobanTileType Tile : LevelData.Tiles)
+    {
+        if (Tile == ESokobanTileType::Target)
+        {
+            ++TargetCount;
+        }
+    }
+
+    if (LevelData.BoxStarts.IsEmpty())
+    {
+        OutErrorMessage =
+            FText::FromString(TEXT("至少需要一个箱子"));
+        return false;
+    }
+
+    if (TargetCount != LevelData.BoxStarts.Num())
+    {
+        OutErrorMessage = FText::FromString(
+            TEXT("箱子数量必须与目标数量一致"));
+        return false;
+    }
+
+    if (!IsWalkable(LevelData.PlayerStart))
+    {
+        OutErrorMessage =
+            FText::FromString(TEXT("玩家必须位于可行走格子"));
+        return false;
+    }
+
+    TSet<FIntPoint> UniqueBoxes;
+    for (const FIntPoint& BoxPosition : LevelData.BoxStarts)
+    {
+        if (!IsWalkable(BoxPosition))
+        {
+            OutErrorMessage =
+                FText::FromString(TEXT("箱子必须位于可行走格子"));
+            return false;
+        }
+
+        if (BoxPosition == LevelData.PlayerStart)
+        {
+            OutErrorMessage =
+                FText::FromString(TEXT("玩家不能与箱子重叠"));
+            return false;
+        }
+
+        if (UniqueBoxes.Contains(BoxPosition))
+        {
+            OutErrorMessage =
+                FText::FromString(TEXT("箱子位置不能重复"));
+            return false;
+        }
+
+        UniqueBoxes.Add(BoxPosition);
+    }
+
+    OutErrorMessage = FText::GetEmpty();
+    return true;
+}
+
+bool ASokobanBoard::WorldToGrid(
+    const FVector& WorldLocation,
+    FIntPoint& OutGridPosition) const
+{
+    if (FMath::IsNearlyZero(TileSize))
+    {
+        return false;
+    }
+
+    const FVector LocalPosition =
+        GetActorTransform().InverseTransformPosition(WorldLocation);
+
+    OutGridPosition = FIntPoint(
+        FMath::RoundToInt(LocalPosition.X / TileSize),
+        FMath::RoundToInt(LocalPosition.Y / TileSize));
+
+    return IsInsideGrid(OutGridPosition);
+}
+
+
 void ASokobanBoard::InitializeTestLevel()
 {
     LevelData.Rows = 7;
